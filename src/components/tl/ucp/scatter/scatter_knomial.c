@@ -82,7 +82,8 @@ ucc_tl_ucp_scatter_knomial_progress(ucc_coll_task_t *coll_task)
     if (KN_NODE_EXTRA == node_type || KN_NODE_PROXY == node_type) {
         goto out;
     }
-
+    vroot = ucc_knomial_pattern_loop_rank(p, root);
+    /* vrank = ucc_knomial_pattern_loop_rank(p, rank); */
     while (!ucc_knomial_pattern_loop_done(p)) {
         step_radix  = ucc_sra_kn_compute_step_radix(rank, size, p);
         block_count = ucc_sra_kn_compute_block_count(count, rank, p);
@@ -101,16 +102,15 @@ ucc_tl_ucp_scatter_knomial_progress(ucc_coll_task_t *coll_task)
                 if (peer == UCC_KN_PEER_NULL)
                     continue;
                 vpeer = ucc_knomial_pattern_loop_rank(p, peer);
-                vroot = ucc_knomial_pattern_loop_rank(p, root);
+
                 peer_recv_dist = calc_recv_dist(team_size, vpeer, radix, vroot);
                 if (peer_recv_dist < task->scatter_kn.recv_dist) {
                	/* printf(" RECV, rank = %d, root = %d, task->scatter_kn.recv_dist = %d, peer_recv_dist = %d, peer = %d, vpeer = %d, p->iter = %d, len %zd \n", */
-                /*        rank, root, task->scatter_kn.recv_dist, peer_recv_dist, peer, vpeer, p->iteration, local_seg_count * dt_size); */
+                       /* rank, root, task->scatter_kn.recv_dist, peer_recv_dist, peer, vpeer, p->iteration, local_seg_count * dt_size); */
                     UCPCHECK_GOTO(
                         ucc_tl_ucp_recv_nb(rbuf, local_seg_count * dt_size,
                                        mem_type, peer, team, task), task, out);
                 }
-//                rbuf = PTR_OFFSET(rbuf, local_seg_count * dt_size);
             }
         }
 
@@ -156,12 +156,8 @@ UCC_SCATTER_KN_PHASE_LOOP:
         ucc_knomial_pattern_next_iteration(p);
     }
 
-    step_radix      = ucc_sra_kn_compute_step_radix(rank, size, p);
-    block_count     = ucc_sra_kn_compute_block_count(count, rank, p);
-    local_seg_index = ucc_sra_kn_compute_seg_index(rank, p->radix_pow, p);
-    local_seg_count = ucc_sra_kn_compute_seg_size(block_count, step_radix,
-                                                          local_seg_index);
-    offset          = ucc_sra_kn_get_offset(count, dt_size, rank, size, radix);
+
+    ucc_sra_kn_get_offset_and_seglen(count, dt_size, rank, size, radix, &offset, &local_seg_count);
     // check of need to do memcpy at root? and not needed if offset == 0
     if (offset != 0) {
         /* printf("rank %d, memcpy offset %zd, len %zd\n", rank, offset, local_seg_count *dt_size); */
@@ -201,7 +197,7 @@ ucc_status_t ucc_tl_ucp_scatter_knomial_start(ucc_coll_task_t *coll_task)
                                                 p->radix, vroot);
     task->scatter_kn.send_offset = 0;
    /* printf("rank = %d, vrank = %d, root = %ld, vroot = %d, recv_dst = %d, radix = %d \n", */
-   		/* team->rank, vrank, coll_task->args.root, vroot, task->scatter_kn.recv_dist, p->radix); */
+   /* 		team->rank, vrank, coll_task->args.root, vroot, task->scatter_kn.recv_dist, p->radix); */
 
     status = ucc_tl_ucp_scatter_knomial_progress(&task->super);
     if (UCC_INPROGRESS == status) {
