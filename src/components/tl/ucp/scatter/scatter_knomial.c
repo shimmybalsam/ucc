@@ -118,6 +118,7 @@ ucc_tl_ucp_scatter_knomial_progress(ucc_coll_task_t *coll_task)
                     UCPCHECK_GOTO(
                         ucc_tl_ucp_recv_nb(rbuf, local_seg_count * dt_size,
                                            mem_type, INV_VRANK(peer, (ucc_rank_t)args->root, size), team, task), task, out);
+                    goto UCC_SCATTER_KN_PHASE_LOOP;
                 }
             }
         }
